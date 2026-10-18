@@ -30,8 +30,9 @@ export interface QuarterlyTaxLine {
   events: InvestmentEvent[]
 }
 
-export function getQuarter(dateStr: string): { year: number; quarterNumber: 1 | 2 | 3 | 4 } {
+export function getQuarter(dateStr: string): { year: number; quarterNumber: 1 | 2 | 3 | 4 } | null {
   const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return null
   const month = date.getUTCMonth() // 0-11
   const quarterNumber = (Math.floor(month / 3) + 1) as 1 | 2 | 3 | 4
   return { year: date.getUTCFullYear(), quarterNumber }
@@ -48,7 +49,9 @@ export function computeQuarterlyTaxReport(events: InvestmentEvent[]): QuarterlyT
   const byQuarter = new Map<string, QuarterlyTaxLine>()
 
   for (const event of events) {
-    const { year, quarterNumber } = getQuarter(event.date)
+    const quarterInfo = getQuarter(event.date)
+    if (!quarterInfo) continue
+    const { year, quarterNumber } = quarterInfo
     const key = `${year}-Q${quarterNumber}`
 
     if (!byQuarter.has(key)) {

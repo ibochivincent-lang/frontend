@@ -20,6 +20,11 @@ describe('getQuarter', () => {
   it('maps December 31 to Q4', () => {
     expect(getQuarter('2025-12-31')).toEqual({ year: 2025, quarterNumber: 4 })
   })
+  it('returns null for invalid or non-ISO dates', () => {
+    expect(getQuarter('invalid-date')).toBeNull()
+    expect(getQuarter('')).toBeNull()
+    expect(getQuarter('not-a-date')).toBeNull()
+  })
 })
 
 describe('computeQuarterlyTaxReport', () => {
@@ -80,6 +85,20 @@ describe('computeQuarterlyTaxReport', () => {
     ]
     const report = computeQuarterlyTaxReport(multiYear)
     expect(report.map((l) => l.quarter)).toEqual(['2025-Q4', '2026-Q1'])
+  })
+
+  it('skips events with invalid dates without creating a NaN-QNaN quarter row', () => {
+    const mixedEvents: InvestmentEvent[] = [
+      { id: 'valid-1', projectName: 'Solar A', date: '2025-02-10', type: 'deposit', amountUSD: 500 },
+      { id: 'invalid-1', projectName: 'Solar B', date: 'malformed-date-string', type: 'deposit', amountUSD: 1000 },
+      { id: 'invalid-2', projectName: 'Wind C', date: '', type: 'distribution', amountUSD: 50 },
+      { id: 'valid-2', projectName: 'Wind C', date: '2025-05-15', type: 'distribution', amountUSD: 75 },
+    ]
+    const report = computeQuarterlyTaxReport(mixedEvents)
+    expect(report.map((l) => l.quarter)).toEqual(['2025-Q1', '2025-Q2'])
+    expect(report.some((l) => l.quarter.includes('NaN'))).toBe(false)
+    expect(report.find((l) => l.quarter === '2025-Q1')!.totalDeposits).toBe(500)
+    expect(report.find((l) => l.quarter === '2025-Q2')!.totalDistributions).toBe(75)
   })
 })
 
